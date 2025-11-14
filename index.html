@@ -195,7 +195,15 @@
         setLogLevel('debug'); // Ver logs de Firebase
         
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+         const firebaseConfig = {
+        apiKey: "AIzaSyBYpzpEwnHLKTBJrPessNqwgGF9-2S1BXo",
+        authDomain: "app-listacompraquincenal.firebaseapp.com",
+        projectId: "app-listacompraquincenal",
+        storageBucket: "app-listacompraquincenal.firebasestorage.app",
+        messagingSenderId: "178599255890",
+        appId: "1:178599255890:web:1f7934ab9c5ba6019be48b",
+        measurementId: "G-CVCNG2DKQV"
+        };
         const __initial_auth_token = typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : '';
         
         let app;
