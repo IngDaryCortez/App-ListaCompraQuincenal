@@ -3,1015 +3,1052 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Compra PALI Quincenal</title>
-    <!-- Icono de Pestaña (Un carrito de compras) -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛒</text></svg>">
-    <!-- Carga de Tailwind CSS -->
+    <title>Mi Super PALI - Control de Compras</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
     <style>
-        /* Fuente Inter */
-        body { font-family: 'Inter', sans-serif; }
-        /* Estilos personalizados para el contenedor principal */
-        .container-app {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background-color: #f7f7f7;
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .checkbox-wrapper input:checked + div {
+            background-color: #10B981;
+            border-color: #10B981;
         }
-        /* Estilo para la tabla de la lista de compra */
-        .grid-list-item {
-            display: grid;
-            grid-template-columns: 1fr 100px 120px 60px; /* Nombre, Cantidad, Precio Final, Check */
-            gap: 1rem;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid #e5e7eb;
-            transition: background-color 0.2s;
+        .checkbox-wrapper input:checked + div svg {
+            display: block;
         }
-        .grid-list-item:last-child {
-            border-bottom: none;
-        }
-        .grid-list-item.checked {
-            background-color: #ecfdf5; /* Verde muy claro para productos comprados */
-        }
-        /* Estilo para el input de precio final */
-        .final-price-input {
-            width: 100%;
-            padding: 0.3rem;
-            border: 1px solid #ccc;
-            border-radius: 0.375rem;
-            text-align: right;
-            transition: background-color 0.15s;
-        }
-        .final-price-input:disabled {
-            background-color: #e5e7eb; /* Gris claro para indicar que está deshabilitado */
-            color: #4b5563; /* Texto más oscuro */
-            cursor: not-allowed;
-            border: 1px solid transparent; /* Hacer que parezca un texto, no un input editable */
-        }
-        /* Estilos para el modal de Firebase */
-        #firebase-modal {
-            transition: opacity 0.3s ease-in-out;
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .closed-list-overlay {
+            background-image: repeating-linear-gradient(45deg, #f3f4f6 25%, transparent 25%, transparent 75%, #f3f4f6 75%, #f3f4f6), repeating-linear-gradient(45deg, #f3f4f6 25%, #f9fafb 25%, #f9fafb 75%, #f3f4f6 75%, #f3f4f6);
+            background-position: 0 0, 10px 10px;
+            background-size: 20px 20px;
+            opacity: 0.5;
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden">
 
-    <!-- Contenedor Principal de la Aplicación -->
-    <div id="app" class="container-app p-4 md:p-8">
-
-        <!-- Encabezado de la Aplicación -->
-        <header class="bg-indigo-600 shadow-xl p-4 md:p-6 rounded-xl mb-6 text-white flex justify-between items-center">
-            <h1 class="text-2xl md:text-3xl font-bold">🛒 Control de Compra PALI</h1>
-            <div class="text-sm">
-                <p id="auth-status" class="font-semibold"></p>
-                <p id="user-id-display" class="truncate max-w-[150px] md:max-w-full text-xs opacity-80">ID: Cargando...</p>
-            </div>
-        </header>
-
-        <!-- Controles de Navegación y Generación -->
-        <section class="bg-white shadow-lg rounded-xl p-4 mb-6">
-            <h2 class="text-xl font-semibold mb-3 text-indigo-700">Selección y Acciones</h2>
-
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <!-- Selector de Mes -->
-                <div class="col-span-2 md:col-span-1">
-                    <label for="month-selector" class="block text-sm font-medium text-gray-700 mb-1">Mes de Compra</label>
-                    <select id="month-selector" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
-                        <!-- Opciones se cargarán con JS -->
-                    </select>
-                </div>
-                <!-- Selector de Quincena -->
-                <div class="col-span-2 md:col-span-1">
-                    <label for="quincena-selector" class="block text-sm font-medium text-gray-700 mb-1">Quincena</label>
-                    <select id="quincena-selector" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
-                        <option value="quincena1">Quincena 1</option>
-                        <option value="quincena2">Quincena 2</option>
-                    </select>
-                </div>
-
-                <!-- Botón Generar Próximo Mes -->
-                <button id="btn-generate-next-month" class="col-span-2 lg:col-span-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-[1.02] disabled:opacity-50" disabled>
-                    Generar Próximo Mes
-                </button>
-
-                <!-- Botón Eliminar Lista del Mes -->
-                <button id="btn-delete-month" class="col-span-2 lg:col-span-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-[1.02] disabled:opacity-50" disabled>
-                    Eliminar Lista del Mes
-                </button>
-            </div>
-            
-            <div class="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Botón Generar Lista Inicial (Solo visible si no hay listas) -->
-                <button id="btn-initial-list" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-[1.02] hidden">
-                    Generar Lista Inicial (Nov 2025)
-                </button>
-                
-                <!-- Botón Guardar Compra (Cerrar Quincena) -->
-                <button id="btn-close-quincena" class="bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-[1.02] disabled:opacity-50" disabled>
-                    Guardar y Cerrar Compra (Quincena)
-                </button>
-            </div>
-        </section>
-
-        <!-- Listas de Compra (Grid Desplegable) -->
-        <section class="bg-white shadow-lg rounded-xl p-4 mb-6 flex-1">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h2 class="text-xl font-semibold text-indigo-700">Lista de Compra</h2>
-                <button id="btn-open-catalog" class="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium py-1.5 px-3 rounded-lg shadow-sm transition duration-150 transform hover:scale-[1.03]">
-                    Gestión de Catálogo
-                </button>
-            </div>
-
-            <!-- Encabezados del Grid -->
-            <div class="grid-list-item font-bold text-gray-600 text-sm bg-gray-100 rounded-t-lg">
-                <span class="truncate">Producto</span>
-                <span class="text-center">Cant.</span>
-                <span class="text-right">Precio Final (C$)</span>
-                <span class="text-center">Comprado</span>
-            </div>
-
-            <!-- Contenedor de la Lista (Se llena con JS) -->
-            <div id="shopping-list-container" class="space-y-1">
-                <p class="text-gray-500 text-center py-4" id="loading-message">Cargando lista...</p>
-            </div>
-        </section>
-
-        <!-- Informes y Resumen -->
-        <section class="bg-white shadow-lg rounded-xl p-4 mb-6">
-            <h2 class="text-xl font-semibold mb-4 text-indigo-700">Informes de Costos y Precios</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                <!-- Resumen de Costos Mensuales -->
-                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <h3 class="font-bold text-lg text-blue-700 mb-2">Costo Mensual Total (Quincena 1 + 2)</h3>
-                    <p class="text-2xl font-extrabold text-blue-900" id="total-cost-display">0.00 C$</p>
-                    <p class="text-sm text-gray-600 mt-2" id="cost-comparison"></p>
-                </div>
-
-                <!-- Reporte de Variación de Precios -->
-                <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                    <h3 class="font-bold text-lg text-yellow-700 mb-2">Variación de Precios (vs. Mes Anterior)</h3>
-                    <div id="price-change-report" class="space-y-1 text-sm max-h-40 overflow-y-auto">
-                        <p class="text-gray-500">No hay datos de meses anteriores para comparar.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Modal para Gestión de Catálogo y Carga de CSV -->
-        <div id="catalog-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 hidden items-center justify-center p-4">
-            <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative">
-                <button id="btn-close-catalog" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
-                <h2 class="text-2xl font-bold text-indigo-700 mb-4">Gestión de Catálogo de Productos</h2>
-
-                <!-- Formulario para Agregar/Editar Producto -->
-                <div class="bg-gray-100 p-4 rounded-lg mb-4 border border-gray-200">
-                    <h3 class="text-lg font-semibold mb-3">Agregar/Editar Producto</h3>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <input type="hidden" id="catalog-product-id">
-                        <input type="text" id="catalog-product-name" placeholder="Nombre" class="col-span-2 p-2 border rounded-lg" required>
-                        <input type="number" id="catalog-product-price" placeholder="Precio Base (C$)" class="p-2 border rounded-lg text-right" min="0" step="0.01" required>
-                        <input type="text" id="catalog-product-unit" placeholder="Unidad (lb, un)" class="p-2 border rounded-lg" required>
-                    </div>
-                    <div class="mt-3 flex justify-end space-x-2">
-                        <button id="btn-clear-catalog-form" class="bg-gray-400 hover:bg-gray-500 text-white font-medium py-2 px-4 rounded-lg transition">Limpiar</button>
-                        <button id="btn-save-catalog-product" class="bg-indigo-500 hover:bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg transition">Guardar Producto</button>
-                    </div>
-                </div>
-
-                <!-- Carga de CSV -->
-                <div class="bg-indigo-50 p-4 rounded-lg mb-4 border border-indigo-200">
-                    <h3 class="text-lg font-semibold mb-3">Carga Masiva (CSV)</h3>
-                    <p class="text-sm text-gray-600 mb-2">Formato requerido: `Nombre,Precio Base,Unidad` (una línea por producto).</p>
-                    <input type="file" id="csv-file-input" accept=".csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200">
-                    <button id="btn-upload-csv" class="mt-3 bg-teal-500 hover:bg-teal-600 text-white font-medium py-2 px-4 rounded-lg transition disabled:opacity-50" disabled>
-                        Subir y Actualizar Catálogo
-                    </button>
-                    <div id="csv-feedback" class="mt-2 text-sm"></div>
-                </div>
-
-                <!-- Lista de Catálogo Actual -->
-                <h3 class="text-lg font-semibold mt-6 mb-3">Catálogo Actual (Editable)</h3>
-                <div id="catalog-list" class="max-h-60 overflow-y-auto space-y-2">
-                    <!-- Productos del catálogo se cargarán aquí -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Notificación de Diálogo/Alerta Personalizada -->
-        <div id="custom-alert" class="fixed bottom-4 right-4 bg-gray-800 text-white p-4 rounded-lg shadow-xl z-[60] opacity-0 transition-opacity duration-300 pointer-events-none" style="min-width: 250px;">
-            <p id="alert-message"></p>
-        </div>
-
+    <!-- LOADING OVERLAY -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center hidden">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+        <p class="text-gray-600 font-medium">Procesando...</p>
     </div>
 
-    <!-- Scripts de Firebase -->
+    <!-- MESSAGE/CONFIRM MODAL -->
+    <div id="msgModal" class="fixed inset-0 bg-black bg-opacity-60 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden transform transition-all scale-100">
+            <div id="msgHeader" class="bg-gray-800 px-6 py-4 flex justify-between items-center">
+                <h3 id="msgTitle" class="text-white font-bold text-lg">Mensaje</h3>
+                <button onclick="app.closeMsgModal()" class="text-white hover:text-gray-300"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6">
+                <p id="msgText" class="text-gray-700 mb-6 text-base leading-relaxed">Contenido...</p>
+                
+                <div id="msgBtnsAlert" class="hidden">
+                    <button onclick="app.closeMsgModal()" class="w-full bg-gray-800 text-white font-bold py-3 rounded-lg hover:bg-gray-900 transition shadow-md">
+                        Entendido
+                    </button>
+                </div>
+
+                <div id="msgBtnsConfirm" class="hidden flex gap-3">
+                    <button onclick="app.closeMsgModal()" class="flex-1 bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition">
+                        Cancelar
+                    </button>
+                    <button id="msgConfirmBtn" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition shadow-md">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUTH SCREEN -->
+    <div id="authScreen" class="fixed inset-0 bg-gray-100 z-40 flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+            <div class="mb-6 text-red-600">
+                <i class="fa-solid fa-cart-shopping text-5xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Mi Super PALI</h1>
+            <p class="text-gray-500 mb-8">Controla tus gastos quincenales y tu inventario.</p>
+            
+            <button id="loginBtn" class="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition flex items-center justify-center gap-2 shadow-lg">
+                <i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar / Registrarse (Anónimo)
+            </button>
+            <p class="mt-4 text-xs text-gray-400">Nota: En producción, configura Google Auth.</p>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="appContainer" class="flex-1 flex flex-col hidden h-full">
+        
+        <!-- NAVBAR -->
+        <nav class="bg-red-600 text-white shadow-md shrink-0 z-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-basket-shopping text-2xl"></i>
+                        <span class="font-bold text-xl tracking-tight">Mi Super PALI</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span id="userEmailDisplay" class="text-sm hidden md:block opacity-90">Usuario</span>
+                        <button id="logoutBtn" class="text-white hover:text-red-200 transition">
+                            <i class="fa-solid fa-right-from-bracket text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- TABS -->
+        <div class="bg-white border-b border-gray-200 shrink-0">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-6 overflow-x-auto">
+                <button onclick="app.switchTab('lists')" class="tab-btn active-tab py-4 px-2 text-sm font-medium border-b-2 border-red-600 text-red-600">
+                    <i class="fa-solid fa-list-check mr-2"></i> Listas de Compra
+                </button>
+                <button onclick="app.switchTab('catalog')" class="tab-btn py-4 px-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                    <i class="fa-solid fa-book-open mr-2"></i> Catálogo
+                </button>
+                <button onclick="app.switchTab('reports')" class="tab-btn py-4 px-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                    <i class="fa-solid fa-chart-line mr-2"></i> Reportes
+                </button>
+            </div>
+        </div>
+
+        <!-- CONTENT AREA -->
+        <main class="flex-1 overflow-hidden relative bg-gray-50">
+            
+            <!-- VIEW: SHOPPING LISTS -->
+            <div id="view-lists" class="view-section h-full flex flex-col max-w-7xl mx-auto w-full">
+                <!-- Toolbar -->
+                <div class="p-4 bg-white border-b flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 shadow-sm">
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <select id="listSelector" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-red-500 focus:border-red-500 block p-2.5 w-full sm:w-64">
+                            <option value="">Cargando listas...</option>
+                        </select>
+                        <button onclick="app.deleteCurrentList()" class="text-gray-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-full transition" title="Borrar esta lista">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="flex gap-2 w-full sm:w-auto items-center justify-end">
+                        <!-- Botón Finalizar Lista -->
+                        <button id="btnFinalizeList" onclick="app.finalizeList()" class="hidden bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg text-sm shadow transition items-center gap-2">
+                            <i class="fa-solid fa-save"></i> <span class="hidden sm:inline">Finalizar Lista</span>
+                        </button>
+                        
+                        <!-- Indicador Cerrado -->
+                        <div id="badgeClosedList" class="hidden bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow flex items-center gap-2">
+                            <i class="fa-solid fa-lock"></i> Cerrada
+                        </div>
+
+                        <button onclick="app.openCreateListModal()" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg text-sm shadow transition flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">Nueva</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Bar -->
+                <div id="listStats" class="bg-yellow-50 px-4 py-2 text-sm text-yellow-800 flex justify-between items-center shrink-0 border-b border-yellow-100 hidden">
+                    <span><i class="fa-solid fa-coins mr-1"></i> Total Estimado: <span class="font-bold" id="statTotal">C$ 0</span></span>
+                    <span><i class="fa-solid fa-cart-arrow-down mr-1"></i> Comprado: <span class="font-bold text-green-700" id="statBought">C$ 0</span></span>
+                </div>
+
+                <!-- Grid Header -->
+                <div class="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0 border-b">
+                    <div class="col-span-1 text-center">Check</div>
+                    <div class="col-span-5 sm:col-span-6">Producto</div>
+                    <div class="col-span-2 text-center">Cant.</div>
+                    <div class="col-span-2 text-right">Precio</div>
+                    <div class="col-span-2 sm:col-span-1 text-right">Total</div>
+                </div>
+
+                <!-- Scrollable List -->
+                <div id="shoppingListContainer" class="flex-1 overflow-y-auto p-2 space-y-2 pb-20 relative">
+                    <div class="text-center py-20 text-gray-400">
+                        <i class="fa-solid fa-basket-shopping text-4xl mb-3 opacity-30"></i>
+                        <p>Selecciona una lista o crea una nueva.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: CATALOG -->
+            <div id="view-catalog" class="view-section hidden h-full flex flex-col max-w-7xl mx-auto w-full">
+                <div class="p-4 bg-white border-b flex flex-wrap justify-between items-center gap-4 shrink-0">
+                    <h2 class="text-lg font-bold text-gray-800">Catálogo de Productos</h2>
+                    <div class="flex gap-2">
+                        <!-- BOTÓN EXPORTAR NUEVO -->
+                        <button onclick="app.exportCatalog()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition shadow flex items-center gap-2">
+                            <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Exportar CSV</span>
+                        </button>
+
+                        <button onclick="document.getElementById('csvInput').click()" class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition shadow">
+                            <i class="fa-solid fa-file-excel mr-2"></i> Importar CSV
+                        </button>
+                        <input type="file" id="csvInput" accept=".csv,.txt" class="hidden" onchange="app.handleFileUpload(this)">
+                        
+                        <button onclick="app.openProductModal()" class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-lg transition shadow">
+                            <i class="fa-solid fa-plus mr-2"></i> Nuevo
+                        </button>
+                        
+                        <button onclick="app.clearCatalog()" title="Borrar todo el catálogo" class="bg-gray-200 hover:bg-red-100 hover:text-red-600 text-gray-600 text-sm font-medium py-2 px-4 rounded-lg transition">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Catalog Header -->
+                <div class="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 text-xs font-semibold text-gray-500 uppercase border-b shrink-0">
+                    <div class="col-span-6">Nombre</div>
+                    <div class="col-span-2 text-right">Precio (C$)</div>
+                    <div class="col-span-2 text-center">Cant. Default</div>
+                    <div class="col-span-2 text-right">Acciones</div>
+                </div>
+
+                <!-- Catalog List -->
+                <div id="catalogListContainer" class="flex-1 overflow-y-auto p-4 space-y-1 bg-white">
+                    <!-- Products injected here -->
+                </div>
+            </div>
+
+            <!-- VIEW: REPORTS -->
+            <div id="view-reports" class="view-section hidden h-full flex flex-col max-w-7xl mx-auto w-full overflow-y-auto p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Reporte de Gastos Mensuales</h2>
+                
+                <div id="reportsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Report Cards Injected Here -->
+                </div>
+
+                <div class="mt-8 p-6 bg-white rounded-xl shadow border border-gray-100">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-700">Comparativa de Precios</h3>
+                    <p class="text-sm text-gray-500 mb-4">Productos que han cambiado de precio respecto al catálogo actual.</p>
+                    <div id="priceAlerts" class="space-y-2">
+                        <!-- Alerts -->
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL: NEW LIST -->
+    <div id="newListModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden">
+            <div class="bg-red-600 px-6 py-4 flex justify-between items-center">
+                <h3 class="text-white font-bold">Crear Lista de Compra</h3>
+                <button onclick="app.closeModal('newListModal')" class="text-white hover:text-red-200"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Mes</label>
+                    <input type="month" id="newListMonth" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Quincena</label>
+                    <select id="newListQuincena" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500">
+                        <option value="1">Quincena 1</option>
+                        <option value="2">Quincena 2</option>
+                    </select>
+                </div>
+                <div class="bg-blue-50 p-3 rounded-lg text-xs text-blue-700">
+                    <i class="fa-solid fa-info-circle mr-1"></i> 
+                    Se usarán los precios y productos actuales del catálogo.
+                </div>
+                <button onclick="app.createNewList()" class="w-full bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition">
+                    Generar Lista
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: PRODUCT CRUD -->
+    <div id="productModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden">
+            <div class="bg-gray-800 px-6 py-4 flex justify-between items-center">
+                <h3 class="text-white font-bold" id="modalProductTitle">Producto</h3>
+                <button onclick="app.closeModal('productModal')" class="text-white hover:text-gray-300"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="prodId">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
+                    <input type="text" id="prodName" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 uppercase">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Precio (C$)</label>
+                        <input type="number" step="0.01" id="prodPrice" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+                        <input type="number" step="1" id="prodQty" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                </div>
+                <button onclick="app.saveProduct()" class="w-full bg-gray-800 text-white font-bold py-2 rounded-lg hover:bg-gray-900 transition">
+                    Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Libraries -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, updateDoc, deleteDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, writeBatch, query, where, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // --- Configuración e Inicialización de Firebase ---
-       const firebaseConfig = {
-        apiKey: "AIzaSyBYpzpEwnHLKTBJrPessNqwgGF9-2S1BXo",
-        authDomain: "app-listacompraquincenal.firebaseapp.com",
-        projectId: "app-listacompraquincenal",
-        storageBucket: "app-listacompraquincenal.firebasestorage.app",
-        messagingSenderId: "178599255890",
-        appId: "1:178599255890:web:1f7934ab9c5ba6019be48b",
-        measurementId: "G-CVCNG2DKQV"
-        };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // ==========================================
+        // 1. FIREBASE CONFIGURATION
+        // ==========================================
+        
+        const firebaseConfig = {
+        apiKey: "AIzaSyBYpzpEwnHLKTBJrPessNqwgGF9-2S1BXo",
+        authDomain: "app-listacompraquincenal.firebaseapp.com",
+        projectId: "app-listacompraquincenal",
+        storageBucket: "app-listacompraquincenal.firebasestorage.app",
+        messagingSenderId: "178599255890",
+        appId: "1:178599255890:web:1f7934ab9c5ba6019be48b",
+        measurementId: "G-CVCNG2DKQV"
+        };
 
-        let app, db, auth;
+        // DATOS EXACTOS DEL ARCHIVO ADJUNTO (Hoja2)
+        const INITIAL_CSV_DATA = `Producto,Precio (C$),Cantidad
+PAMPER TALLA M,278,2
+ARROZ 80 20,337.47,1
+PINILLO,50.5,2
+AZUCAR,67.5,1
+FOSFOROS,20.25,1
+JALEA,28.5,1
+CAFÉ,74,1
+MOZTAZA,39.5,1
+TANG,9.25,5
+MAZECA,31,1
+ACEITE,83,1
+TOULLA HUMEDA,51.5,1
+JABON TRASTE,28.5,1
+ASISTIN,29.5,1
+GALLETA SULI VAINILLA,37,1
+POSTA CERDO,196.08,1
+ACE SULI,110,1
+YOGURT,52,2
+LECHE,38,7
+SAL,5.5,1
+CUBITO MAGUI,13.5,2
+LIZANO,12,3
+SANIADOR,26.5,2
+MARGARINA,14,1
+EMPANIZADOR,51,1
+PASTE TRASTE,17.5,1
+CLORO,49.5,1
+BAYGON,184,1
+GEL,54,1
+POLLO,407.96,1
+BISTEC,330.4,1
+CARNE MOLIDA,128.7,1
+BANANO,19.25,1
+GATO TRAMPA,56,1`;
+
+        // Initialize Firebase
+        let app, auth, db;
         let userId = null;
-        let isAuthReady = false;
+        let currentListId = null;
+        let currentListStatus = 'active'; 
+        let unsubscribeList = null;
+        let allProducts = []; 
 
-        // Estructuras de datos principales
-        let productCatalog = []; // Catálogo maestro de productos
-        let monthlyLists = {}; // Listas de compra por mes (YYYY-MM: {quincena1: {items: [], isClosed: false}, quincena2: ...})
-
-        // Estado de la aplicación
-        let currentMonthKey = ''; // YYYY-MM
-        let currentQuincena = 'quincena1';
-
-        // --- Elementos del DOM ---
-        const $monthSelector = document.getElementById('month-selector');
-        const $quincenaSelector = document.getElementById('quincena-selector');
-        const $shoppingListContainer = document.getElementById('shopping-list-container');
-        const $loadingMessage = document.getElementById('loading-message');
-        const $catalogModal = document.getElementById('catalog-modal');
-        const $catalogList = document.getElementById('catalog-list');
-        const $btnGenerateNextMonth = document.getElementById('btn-generate-next-month');
-        const $btnDeleteMonth = document.getElementById('btn-delete-month');
-        const $btnInitialList = document.getElementById('btn-initial-list'); // Nuevo botón
-        const $btnCloseQuincena = document.getElementById('btn-close-quincena'); // Nuevo botón
-        const $totalCostDisplay = document.getElementById('total-cost-display');
-        const $costComparison = document.getElementById('cost-comparison');
-        const $priceChangeReport = document.getElementById('price-change-report');
-        const $csvFileInput = document.getElementById('csv-file-input');
-        const $btnUploadCsv = document.getElementById('btn-upload-csv');
-        const $csvFeedback = document.getElementById('csv-feedback');
-        const $authStatus = document.getElementById('auth-status');
-        const $userIdDisplay = document.getElementById('user-id-display');
-
-        // --- Funciones de Utility ---
-
-        function showCustomAlert(message, type = 'info') {
-            const $alert = document.getElementById('custom-alert');
-            const $alertMessage = document.getElementById('alert-message');
+        try {
+            const configToUse = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default';
             
-            // Colores basados en tipo
-            let bgColor = 'bg-gray-800';
-            if (type === 'success') bgColor = 'bg-green-600';
-            if (type === 'error') bgColor = 'bg-red-600';
-            if (type === 'warning') bgColor = 'bg-yellow-600';
+            app = initializeApp(configToUse);
+            auth = getAuth(app);
+            db = getFirestore(app);
 
-            $alert.className = `fixed bottom-4 right-4 ${bgColor} text-white p-4 rounded-lg shadow-xl z-[60] opacity-0 transition-opacity duration-300 pointer-events-none`;
-            $alertMessage.textContent = message;
-            
-            // Mostrar y luego ocultar
-            setTimeout(() => {
-                $alert.classList.remove('opacity-0', 'pointer-events-none');
-            }, 50);
-
-            setTimeout(() => {
-                $alert.classList.add('opacity-0', 'pointer-events-none');
-            }, 3000);
+            console.log("Firebase initialized.");
+        } catch (e) {
+            console.error("Firebase init error:", e);
         }
 
-        function getMonthName(date) {
-            return date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-        }
+        // ==========================================
+        // 2. APP LOGIC CLASS
+        // ==========================================
 
-        function formatDateKey(date) {
-            const year = date.getFullYear();
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            return `${year}-${month}`;
-        }
-
-        // --- FIREBASE: Rutas de Datos ---
-        const getCatalogPath = () => doc(db, `artifacts/${appId}/users/${userId}/configs/catalog_master`);
-        const getMonthlyListCollection = () => collection(db, `artifacts/${appId}/users/${userId}/monthly_lists`);
-        const getMonthlyListDoc = (monthKey) => doc(db, `artifacts/${appId}/users/${userId}/monthly_lists/${monthKey}`);
-
-
-        // --- FIREBASE: Lógica de Catálogo ---
-
-        async function saveCatalog() {
-            if (!userId) return;
-            try {
-                await setDoc(getCatalogPath(), { products: productCatalog }, { merge: true });
-                showCustomAlert('Catálogo guardado con éxito.', 'success');
-            } catch (e) {
-                console.error("Error saving catalog:", e);
-                showCustomAlert('Error al guardar el catálogo.', 'error');
+        class SupermarketApp {
+            constructor() {
+                this.bindEvents();
             }
-        }
 
-        function setupCatalogListener() {
-            if (!userId) return;
-            onSnapshot(getCatalogPath(), (docSnap) => {
-                if (docSnap.exists()) {
-                    productCatalog = docSnap.data().products || [];
-                    // Si el catálogo está vacío, inicializar con los productos base.
-                    if (productCatalog.length === 0) {
-                        initializeCatalog();
+            bindEvents() {
+                document.getElementById('loginBtn').addEventListener('click', () => this.login());
+                document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+                
+                const today = new Date();
+                const monthStr = today.toISOString().slice(0, 7);
+                document.getElementById('newListMonth').value = monthStr;
+            }
+            
+            escapeStr(str) {
+                return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            }
+
+            // --- CUSTOM UI HELPERS ---
+            showMessage(title, text) {
+                document.getElementById('msgTitle').innerText = title;
+                document.getElementById('msgText').innerText = text;
+                document.getElementById('msgBtnsAlert').classList.remove('hidden');
+                document.getElementById('msgBtnsConfirm').classList.add('hidden');
+                document.getElementById('msgHeader').className = "bg-gray-800 px-6 py-4 flex justify-between items-center";
+                document.getElementById('msgModal').classList.remove('hidden');
+            }
+
+            showConfirm(title, text, onConfirmCallback, isDestructive = false) {
+                document.getElementById('msgTitle').innerText = title;
+                document.getElementById('msgText').innerText = text;
+                document.getElementById('msgBtnsAlert').classList.add('hidden');
+                document.getElementById('msgBtnsConfirm').classList.remove('hidden');
+                
+                const header = document.getElementById('msgHeader');
+                header.className = isDestructive 
+                    ? "bg-red-600 px-6 py-4 flex justify-between items-center" 
+                    : "bg-blue-600 px-6 py-4 flex justify-between items-center";
+
+                const confirmBtn = document.getElementById('msgConfirmBtn');
+                const newBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+                
+                newBtn.onclick = () => {
+                    this.closeMsgModal();
+                    onConfirmCallback();
+                };
+                
+                document.getElementById('msgModal').classList.remove('hidden');
+            }
+
+            closeMsgModal() {
+                document.getElementById('msgModal').classList.add('hidden');
+            }
+
+            // --- Auth ---
+            async login() {
+                this.showLoading(true);
+                try {
+                    if (typeof __initial_auth_token !== 'undefined') {
+                         await signInAnonymously(auth);
+                    } else {
+                        await signInAnonymously(auth);
                     }
-                } else {
-                    productCatalog = [];
-                    initializeCatalog(); 
+                } catch (error) {
+                    console.error(error);
+                    this.showMessage("Error de Acceso", "No se pudo iniciar sesión: " + error.message);
+                } finally {
+                    this.showLoading(false);
                 }
-                renderCatalog();
-            }, (error) => {
-                console.error("Error listening to catalog:", error);
-            });
-        }
-
-        function initializeCatalog() {
-            if (productCatalog.length > 0) return;
-
-            const initialProducts = [
-                'Cubos maguie', 'Empanizador', 'Sal', 'Azúcar', 'Aceite', 'Lizano', 'Maseca', 'Arroz', 'Pollo',
-                'carne molida', 'Pamper talla M2', 'toalla humeda', 'Leche', 'Pinolillo', 'Ace suli',
-                'botella de cloro', 'Asistin', 'Tang', 'Margarina', 'Yogurt', 'Galletas', 'Gel de cabello',
-                'Café', 'Jalea pequeña', 'Cebolla', 'Chiltoma', 'Tomate', 'Bananos', 'Bolsa para hielo', 'Plátanos'
-            ];
-            
-            productCatalog = initialProducts.map(name => ({
-                id: crypto.randomUUID(),
-                name: name,
-                unitPrice: '25.00', // Precio base por defecto (el usuario debe ajustarlo)
-                unit: 'unidades',
-                initialQuantity: 1
-            }));
-            
-            saveCatalog();
-        }
-
-        // --- FIREBASE: Lógica de Listas Mensuales ---
-
-        async function saveMonthlyList() {
-            if (!userId || !currentMonthKey) return;
-
-            const listData = monthlyLists[currentMonthKey];
-            if (!listData) return;
-
-            // Recalcular costo total (solo de quincenas cerradas)
-            // NOTA: El cálculo de costos ahora usa 'finalPrice' SÓLO si la quincena está cerrada.
-            // Aunque el input de precio no es editable, el precio final está inicializado con initialPrice
-            // en 'generateInitialList'. Para que el informe sea útil, asumimos que 'finalPrice' se fija
-            // en la quincena2 del mes anterior y se hereda como 'initialPrice' en el nuevo mes.
-            
-            const cost1 = listData.quincena1.isClosed ? listData.quincena1.items.reduce((sum, p) => sum + (p.checked ? parseFloat(p.finalPrice) || 0 : 0), 0) : 0;
-            const cost2 = listData.quincena2.isClosed ? listData.quincena2.items.reduce((sum, p) => sum + (p.checked ? parseFloat(p.finalPrice) || 0 : 0), 0) : 0;
-            
-            listData.totalMonthlyCost = (cost1 + cost2).toFixed(2);
-
-            try {
-                await setDoc(getMonthlyListDoc(currentMonthKey), listData, { merge: true });
-                renderTotalCost();
-            } catch (e) {
-                console.error("Error saving monthly list:", e);
-                showCustomAlert('Error al guardar la lista de compra.', 'error');
             }
-        }
 
-        function setupMonthlyListsListener() {
-            if (!userId) return;
-            
-            onSnapshot(getMonthlyListCollection(), (querySnapshot) => {
-                monthlyLists = {};
-                querySnapshot.forEach((doc) => {
-                    monthlyLists[doc.id] = doc.data();
+            async logout() {
+                await signOut(auth);
+                window.location.reload();
+            }
+
+            // --- Navigation ---
+            switchTab(tabName) {
+                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+                document.getElementById(`view-${tabName}`).classList.remove('hidden');
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('active-tab', 'text-red-600', 'border-red-600');
+                    btn.classList.add('text-gray-500', 'border-transparent');
                 });
                 
-                updateMonthSelector();
-                
-                // Si no hay listas, forzar la visualización del botón de inicio.
-                if (Object.keys(monthlyLists).length === 0) {
-                    $btnInitialList.classList.remove('hidden');
-                    $btnGenerateNextMonth.disabled = true;
-                    $btnCloseQuincena.disabled = true;
-                    $btnDeleteMonth.disabled = true;
-                    $loadingMessage.textContent = 'Presione "Generar Lista Inicial (Nov 2025)" para empezar.';
-                } else {
-                    $btnInitialList.classList.add('hidden');
-                    
-                    // Si el mes actual no está en la lista, establecer el más reciente.
-                    if (!monthlyLists[currentMonthKey] || !currentMonthKey) {
-                        const sortedKeys = Object.keys(monthlyLists).sort().reverse();
-                        currentMonthKey = sortedKeys[0] || '';
-                        if (currentMonthKey) $monthSelector.value = currentMonthKey;
-                    }
-                    
-                    // Asegurar que quincena1 y quincena2 existen con la nueva estructura
-                    const currentMonthData = monthlyLists[currentMonthKey];
-                    if(currentMonthData) {
-                        // Migración de datos antiguos si es necesario
-                        if (!currentMonthData.quincena1.items) currentMonthData.quincena1 = { items: currentMonthData.quincena1, isClosed: false };
-                        if (!currentMonthData.quincena2.items) currentMonthData.quincena2 = { items: currentMonthData.quincena2, isClosed: false };
-                    }
-
-                    renderShoppingList();
-                    renderPriceChangeReport();
-                    renderTotalCost();
+                const activeBtn = document.querySelector(`button[onclick="app.switchTab('${tabName}')"]`);
+                if(activeBtn) {
+                    activeBtn.classList.add('active-tab', 'text-red-600', 'border-red-600');
+                    activeBtn.classList.remove('text-gray-500', 'border-transparent');
                 }
 
-                $loadingMessage.classList.add('hidden');
-                // Habilitar botones de acción si hay listas
-                $btnGenerateNextMonth.disabled = Object.keys(monthlyLists).length === 0;
-                $btnDeleteMonth.disabled = Object.keys(monthlyLists).length === 0;
-
-            }, (error) => {
-                console.error("Error listening to monthly lists:", error);
-                showCustomAlert('Error al cargar las listas mensuales.', 'error');
-            });
-        }
-
-        async function deleteCurrentMonthList() {
-            if (!currentMonthKey || !confirm(`¿Está seguro de eliminar la lista de ${monthlyLists[currentMonthKey].month}? Esta acción es irreversible.`)) {
-                return;
+                if(tabName === 'catalog') this.loadCatalog();
+                if(tabName === 'reports') this.loadReports();
             }
 
-            try {
-                await deleteDoc(getMonthlyListDoc(currentMonthKey));
-                currentMonthKey = '';
-                showCustomAlert(`Lista de compra eliminada.`, 'success');
-            } catch (e) {
-                console.error("Error deleting monthly list:", e);
-                showCustomAlert('Error al eliminar la lista mensual.', 'error');
+            // --- Catalog Management ---
+            async loadCatalog() {
+                if(!userId) return;
+                this.showLoading(true);
+                const q = query(collection(db, `artifacts/${this.getAppId()}/users/${userId}/products`), orderBy("name"));
+                
+                try {
+                    const querySnapshot = await getDocs(q);
+                    allProducts = [];
+                    const container = document.getElementById('catalogListContainer');
+                    container.innerHTML = '';
+
+                    if (querySnapshot.empty) {
+                        container.innerHTML = `
+                            <div class="flex flex-col items-center justify-center py-12 text-center">
+                                <i class="fa-solid fa-box-open text-6xl text-gray-200 mb-4"></i>
+                                <p class="text-gray-500 mb-4">Tu catálogo está vacío.</p>
+                                <button onclick="app.loadDefaultData()" class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 rounded-lg font-medium text-sm transition">
+                                    <i class="fa-solid fa-upload mr-2"></i> Cargar Sugeridos
+                                </button>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    querySnapshot.forEach((doc) => {
+                        const p = doc.data();
+                        allProducts.push({id: doc.id, ...p});
+                        
+                        const el = document.createElement('div');
+                        el.className = "grid grid-cols-12 gap-4 px-6 py-3 border-b hover:bg-gray-50 items-center transition";
+                        el.innerHTML = `
+                            <div class="col-span-6 font-medium text-gray-800 truncate">${p.name}</div>
+                            <div class="col-span-2 text-right font-mono text-gray-600">C$ ${p.price}</div>
+                            <div class="col-span-2 text-center text-gray-500 bg-gray-100 rounded py-1 text-xs mx-auto w-12">${p.quantity}</div>
+                            <div class="col-span-2 text-right flex justify-end gap-2">
+                                <button onclick="app.openProductModal('${doc.id}')" class="text-blue-500 hover:bg-blue-50 p-1 rounded"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick="app.deleteProduct('${doc.id}')" class="text-red-500 hover:bg-red-50 p-1 rounded"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        `;
+                        container.appendChild(el);
+                    });
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    this.showLoading(false);
+                }
             }
-        }
 
-        /**
-         * Crea una lista inicial para un mes.
-         * @param {Date} date - La fecha para la cual se creará la lista.
-         * @param {Array} baseCatalog - La lista base de productos para copiar (del catálogo o quincena anterior).
-         */
-        async function generateInitialList(date, baseCatalog = productCatalog) {
-            const monthKey = formatDateKey(date);
-            const monthName = getMonthName(date);
+            // FUNCION EXPORTAR NUEVA
+            exportCatalog() {
+                if (!allProducts || allProducts.length === 0) return this.showMessage("Error", "No hay datos para exportar.");
+                
+                let csvContent = "Producto,Precio (C$),Cantidad\n";
+                
+                allProducts.forEach(p => {
+                    // Limpiar nombres con comas
+                    const name = p.name.includes(',') ? `"${p.name}"` : p.name; 
+                    csvContent += `${name},${p.price},${p.quantity}\n`;
+                });
 
-            if (monthlyLists[monthKey]) {
-                showCustomAlert(`La lista de ${monthName} ya existe.`, 'warning');
-                currentMonthKey = monthKey;
-                return;
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", "catalogo_productos.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             }
 
-            // Mapear productos a la estructura de la lista de compra
-            const baseProducts = baseCatalog.map(p => ({
-                id: crypto.randomUUID(),
-                name: p.name,
-                // Si viene del catálogo, usa unitPrice. Si viene de una quincena anterior, usa finalPrice.
-                initialPrice: parseFloat(p.unitPrice || p.finalPrice) || 0,
-                finalPrice: parseFloat(p.unitPrice || p.finalPrice) || 0, // Por defecto, el final es igual al inicial
-                quantity: parseFloat(p.initialQuantity || p.quantity) || 1,
-                unit: p.unit || 'unidades',
-                checked: false
-            }));
+            async loadDefaultData() {
+                await this.parseAndUploadCSV(INITIAL_CSV_DATA);
+            }
 
-            // La Quincena 2 es una copia idéntica de la Quincena 1 al inicio del mes
-            const quincena1Items = baseProducts.map(p => ({...p, id: crypto.randomUUID()}));
-            const quincena2Items = baseProducts.map(p => ({...p, id: crypto.randomUUID()}));
+            async parseAndUploadCSV(csvText) {
+                this.showLoading(true);
+                const lines = csvText.trim().split(/\r?\n/);
+                const batch = writeBatch(db);
+                const productsRef = collection(db, `artifacts/${this.getAppId()}/users/${userId}/products`);
+                
+                let count = 0;
+                const startIndex = lines[0].includes('Producto') ? 1 : 0;
+                const existingSnap = await getDocs(productsRef);
+                const existingNames = new Set();
+                existingSnap.forEach(d => existingNames.add(d.data().name.toUpperCase()));
 
-            const newListData = {
-                month: monthName,
-                quincena1: { items: quincena1Items, isClosed: false }, // Nueva estructura con flag de cierre
-                quincena2: { items: quincena2Items, isClosed: false }, // Nueva estructura con flag de cierre
-                totalMonthlyCost: '0.00'
-            };
+                for (let i = startIndex; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if(!line) continue;
+                    const parts = line.split(','); 
+                    if(parts.length < 2) continue;
 
-            monthlyLists[monthKey] = newListData;
-            currentMonthKey = monthKey;
+                    const rawName = parts[0].trim().toUpperCase();
+                    const name = rawName.replace(/["']/g, "");
+                    const price = parseFloat(parts[1]) || 0;
+                    const qty = parseFloat(parts[2]) || 1;
+
+                    if (!existingNames.has(name)) {
+                        const newDoc = doc(productsRef);
+                        batch.set(newDoc, { name, price, quantity: qty });
+                        existingNames.add(name);
+                        count++;
+                    }
+                }
+
+                if (count > 0) {
+                    await batch.commit();
+                    this.showLoading(false);
+                    this.showMessage("Importación Exitosa", `Se agregaron ${count} productos al catálogo.`);
+                    this.loadCatalog();
+                } else {
+                    this.showLoading(false);
+                    // Verificación más flexible
+                    if(count === 0 && existingNames.size > 0 && csvText === INITIAL_CSV_DATA) {
+                         this.showMessage("Aviso", "Ya tienes todos los productos sugeridos cargados.");
+                    } else if (count === 0 && csvText !== INITIAL_CSV_DATA) {
+                         this.showMessage("Aviso", "No se encontraron productos nuevos en el archivo.");
+                    }
+                    else this.loadCatalog();
+                }
+            }
+
+            handleFileUpload(input) {
+                const file = input.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.parseAndUploadCSV(e.target.result);
+                    input.value = ''; 
+                };
+                reader.readAsText(file);
+            }
+
+            openProductModal(prodId = null) {
+                const modal = document.getElementById('productModal');
+                document.getElementById('prodId').value = prodId || '';
+                document.getElementById('modalProductTitle').innerText = prodId ? 'Editar Producto' : 'Nuevo Producto';
+                
+                if (prodId) {
+                    const p = allProducts.find(x => x.id === prodId);
+                    document.getElementById('prodName').value = p.name;
+                    document.getElementById('prodPrice').value = p.price;
+                    document.getElementById('prodQty').value = p.quantity;
+                } else {
+                    document.getElementById('prodName').value = '';
+                    document.getElementById('prodPrice').value = '';
+                    document.getElementById('prodQty').value = '1';
+                }
+                modal.classList.remove('hidden');
+            }
+
+            async saveProduct() {
+                const id = document.getElementById('prodId').value;
+                const nameRaw = document.getElementById('prodName').value.trim().toUpperCase();
+                const name = nameRaw.replace(/["']/g, ""); 
+                const price = parseFloat(document.getElementById('prodPrice').value) || 0;
+                const quantity = parseFloat(document.getElementById('prodQty').value) || 1;
+
+                if (!name) return this.showMessage("Faltan Datos", "El nombre es requerido");
+
+                const colRef = collection(db, `artifacts/${this.getAppId()}/users/${userId}/products`);
+
+                try {
+                    if (id) {
+                        await setDoc(doc(colRef, id), { name, price, quantity }, { merge: true });
+                    } else {
+                        const q = query(colRef, where("name", "==", name));
+                        const snap = await getDocs(q);
+                        if (!snap.empty) return this.showMessage("Duplicado", "El producto ya existe");
+                        await setDoc(doc(colRef), { name, price, quantity });
+                    }
+                    this.closeModal('productModal');
+                    this.loadCatalog();
+                } catch (e) {
+                    console.error(e);
+                    this.showMessage("Error", "Error al guardar: " + e.message);
+                }
+            }
+
+            async deleteProduct(id) {
+                if(!userId) return;
+                this.showConfirm("Borrar Producto", "¿Estás seguro que quieres eliminar este producto del catálogo permanentemente?", async () => {
+                    this.showLoading(true);
+                    try {
+                        await deleteDoc(doc(db, `artifacts/${this.getAppId()}/users/${userId}/products`, id));
+                        await this.loadCatalog();
+                    } catch (e) {
+                        console.error("Error borrando:", e);
+                        this.showMessage("Error", "No se pudo borrar: " + e.message);
+                    } finally {
+                        this.showLoading(false);
+                    }
+                }, true);
+            }
             
-            await saveMonthlyList();
-            $monthSelector.value = monthKey;
-            showCustomAlert(`Lista de ${monthName} generada con éxito.`, 'success');
-        }
+            async clearCatalog() {
+                if(!userId) return;
+                this.showConfirm("PELIGRO: Vaciar Catálogo", "¿Estás seguro que quieres BORRAR TODO el catálogo? Esta acción no se puede deshacer.", async () => {
+                     this.showLoading(true);
+                     try {
+                         const colRef = collection(db, `artifacts/${this.getAppId()}/users/${userId}/products`);
+                         const snap = await getDocs(colRef);
+                         
+                         if(snap.empty) {
+                             this.showLoading(false);
+                             this.showMessage("Aviso", "El catálogo ya está vacío.");
+                             return;
+                         }
 
-        async function closeQuincenaList() {
-            if (!currentMonthKey || !monthlyLists[currentMonthKey]) return;
+                         const batchSize = 400; 
+                         const chunks = [];
+                         let docs = snap.docs;
 
-            const quincenaData = monthlyLists[currentMonthKey][currentQuincena];
+                         for (let i = 0; i < docs.length; i += batchSize) {
+                             const chunk = docs.slice(i, i + batchSize);
+                             const batch = writeBatch(db);
+                             chunk.forEach(doc => batch.delete(doc.ref));
+                             chunks.push(batch.commit());
+                         }
 
-            if (quincenaData.isClosed) {
-                showCustomAlert('Esta quincena ya está cerrada.', 'warning');
-                return;
+                         await Promise.all(chunks);
+                         
+                         document.getElementById('catalogListContainer').innerHTML = '';
+                         this.showMessage("Éxito", "El catálogo ha sido eliminado correctamente.");
+                         await this.loadCatalog();
+                     } catch (e) {
+                         console.error("Error limpiando catálogo:", e);
+                         this.showMessage("Error", "Error al limpiar: " + e.message);
+                     } finally {
+                         this.showLoading(false);
+                     }
+                 }, true);
             }
 
-            if (!confirm(`¿Está seguro de CERRAR la ${currentQuincena} de ${monthlyLists[currentMonthKey].month}? Los precios y checks no se podrán modificar más.`)) {
-                return;
-            }
-
-            quincenaData.isClosed = true;
-            await saveMonthlyList();
-            renderShoppingList();
-            showCustomAlert(`¡Compra de ${currentQuincena} cerrada y guardada!`, 'success');
-        }
-
-
-        // --- UI RENDERIZADO y HANDLERS ---
-
-        function updateMonthSelector() {
-            const sortedKeys = Object.keys(monthlyLists).sort().reverse();
-            $monthSelector.innerHTML = '';
+            // --- Shopping List Logic ---
             
-            if (sortedKeys.length === 0) return;
-
-            // Asegurar que currentMonthKey sea uno válido si la lista ha cambiado
-            if (!currentMonthKey || !monthlyLists[currentMonthKey]) {
-                currentMonthKey = sortedKeys[0];
-            }
-
-            sortedKeys.forEach(key => {
-                const option = document.createElement('option');
-                option.value = key;
-                option.textContent = monthlyLists[key].month;
-                $monthSelector.appendChild(option);
-            });
-
-            if (currentMonthKey) {
-                $monthSelector.value = currentMonthKey;
-            }
-        }
-
-        function renderShoppingList() {
-            $shoppingListContainer.innerHTML = '';
-
-            if (!currentMonthKey || !monthlyLists[currentMonthKey]) {
-                $shoppingListContainer.innerHTML = '<p class="text-gray-500 text-center py-4">Seleccione un mes o use el botón inicial.</p>';
-                return;
-            }
-
-            const currentQuincenaData = monthlyLists[currentMonthKey][currentQuincena];
-            const currentList = currentQuincenaData.items;
-            const isClosed = currentQuincenaData.isClosed;
-
-            $btnCloseQuincena.disabled = isClosed;
-            $btnCloseQuincena.textContent = isClosed ? `COMPRA CERRADA (${currentQuincena.toUpperCase()})` : 'Guardar y Cerrar Compra (Quincena)';
-            $btnCloseQuincena.classList.toggle('bg-gray-500', isClosed);
-            $btnCloseQuincena.classList.toggle('hover:bg-red-800', !isClosed);
-            
-            // Si la lista está cerrada, el botón de generar el próximo mes debe revisar la Q2
-            const nextMonthDisabled = currentQuincena === 'quincena1' || !monthlyLists[currentMonthKey].quincena2.isClosed;
-            $btnGenerateNextMonth.disabled = nextMonthDisabled;
-
-
-            if (!currentList || currentList.length === 0) {
-                $shoppingListContainer.innerHTML = '<p class="text-gray-500 text-center py-4">No hay productos en esta quincena.</p>';
-                return;
-            }
-
-            currentList.forEach(product => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = `grid-list-item hover:bg-gray-50 ${product.checked ? 'checked' : ''}`; 
-                itemDiv.dataset.id = product.id;
-
-                // El campo de precio está PERMANENTEMENTE deshabilitado y solo muestra el valor
-                const isPriceDisabled = true; 
-
-                itemDiv.innerHTML = `
-                    <span class="font-medium truncate">${product.name}</span>
-                    <span class="text-center text-sm text-gray-600">${product.quantity} ${product.unit}</span>
-                    <input type="text" 
-                        class="final-price-input text-sm text-gray-800" 
-                        value="${parseFloat(product.finalPrice || 0).toFixed(2)}"
-                        data-id="${product.id}" 
-                        disabled />
-                    <input type="checkbox" 
-                        class="w-5 h-5 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 mx-auto"
-                        ${product.checked ? 'checked' : ''} data-id="${product.id}" 
-                        ${isClosed ? 'disabled' : ''} /> <!-- Checkbox deshabilitado si está cerrada -->
-                `;
-
-                $shoppingListContainer.appendChild(itemDiv);
-            });
-        }
-
-        // Handler para actualizar el estado del producto (solo checked)
-        $shoppingListContainer.addEventListener('change', (e) => {
-            const target = e.target;
-            const id = target.dataset.id;
-            const quincenaData = monthlyLists[currentMonthKey][currentQuincena];
-
-            if (quincenaData.isClosed) return; // No permitir cambios si está cerrado
-
-            const list = quincenaData.items;
-            const product = list.find(p => p.id === id);
-
-            if (product) {
-                // Solo manejar el cambio del checkbox
-                if (target.type === 'checkbox') {
-                    product.checked = target.checked;
-                    
-                    // Al marcar/desmarcar, no se modifica el precio final (finalPrice)
-                    // Se mantiene el valor actual (que es el initialPrice heredado o el precio cerrado anterior).
-
-                    // Actualizar clase visualmente
-                    target.closest('.grid-list-item').classList.toggle('checked', target.checked);
-                    
-                    // Forzar re-renderizado solo de la lista para actualizar clases, aunque no es estrictamente necesario
-                    // renderShoppingList(); 
-
-                } 
-                // NO hay lógica para target.type === 'number'
-
-                saveMonthlyList();
-            }
-        });
-
-
-        function renderCatalog() {
-            $catalogList.innerHTML = '';
-            productCatalog.forEach(p => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'flex justify-between items-center bg-white p-3 border border-gray-200 rounded-lg shadow-sm';
-                itemDiv.innerHTML = `
-                    <div class="flex-1 mr-4">
-                        <p class="font-semibold text-gray-800">${p.name}</p>
-                        <p class="text-sm text-gray-500">${p.unitPrice} C$ / ${p.unit}</p>
-                    </div>
-                    <div class="space-x-2">
-                        <button data-id="${p.id}" class="btn-edit-catalog bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded hover:bg-yellow-200 transition">Editar</button>
-                        <button data-id="${p.id}" class="btn-delete-catalog bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded hover:bg-red-200 transition">Eliminar</button>
-                    </div>
-                `;
-                $catalogList.appendChild(itemDiv);
-            });
-        }
-
-        // --- Catálogo CRUD Handlers ---
-
-        document.getElementById('btn-open-catalog').addEventListener('click', () => {
-            $catalogModal.classList.remove('hidden');
-            $catalogModal.classList.add('flex');
-            clearCatalogForm();
-            renderCatalog();
-        });
-
-        document.getElementById('btn-close-catalog').addEventListener('click', () => {
-            $catalogModal.classList.add('hidden');
-            $catalogModal.classList.remove('flex');
-            clearCatalogForm();
-        });
-
-        function clearCatalogForm() {
-            document.getElementById('catalog-product-id').value = '';
-            document.getElementById('catalog-product-name').value = '';
-            document.getElementById('catalog-product-price').value = '';
-            document.getElementById('catalog-product-unit').value = '';
-            document.getElementById('btn-save-catalog-product').textContent = 'Guardar Producto';
-        }
-
-        document.getElementById('btn-clear-catalog-form').addEventListener('click', clearCatalogForm);
-
-        document.getElementById('btn-save-catalog-product').addEventListener('click', () => {
-            const id = document.getElementById('catalog-product-id').value;
-            const name = document.getElementById('catalog-product-name').value.trim();
-            const price = parseFloat(document.getElementById('catalog-product-price').value);
-            const unit = document.getElementById('catalog-product-unit').value.trim();
-
-            if (!name || isNaN(price) || price < 0 || !unit) {
-                showCustomAlert('Por favor, complete todos los campos de forma válida.', 'warning');
-                return;
-            }
-
-            const existingIndex = productCatalog.findIndex(p => p.id === id);
-
-            if (existingIndex !== -1) {
-                // Editar
-                productCatalog[existingIndex].name = name;
-                productCatalog[existingIndex].unitPrice = price.toFixed(2);
-                productCatalog[existingIndex].unit = unit;
-                showCustomAlert(`Producto "${name}" actualizado.`, 'success');
-            } else {
-                // Agregar
-                if (productCatalog.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-                    showCustomAlert('Este producto ya existe en el catálogo.', 'error');
+            async fetchLists() {
+                if (!userId) return;
+                const selector = document.getElementById('listSelector');
+                selector.innerHTML = '<option>Cargando...</option>';
+                
+                const q = query(collection(db, `artifacts/${this.getAppId()}/users/${userId}/shopping_lists`), orderBy("listId", "desc"));
+                
+                const snap = await getDocs(q);
+                selector.innerHTML = '';
+                
+                if (snap.empty) {
+                    selector.innerHTML = '<option value="">Sin listas (Crea una)</option>';
+                    document.getElementById('shoppingListContainer').innerHTML = '<div class="text-center py-10 text-gray-400">Crea una lista nueva para comenzar</div>';
+                    document.getElementById('listStats').classList.add('hidden');
+                    document.getElementById('btnFinalizeList').classList.add('hidden');
                     return;
                 }
-                productCatalog.push({
-                    id: crypto.randomUUID(),
-                    name: name,
-                    unitPrice: price.toFixed(2),
-                    unit: unit,
-                    initialQuantity: 1
+
+                snap.forEach(d => {
+                    const data = d.data();
+                    const opt = document.createElement('option');
+                    opt.value = d.id;
+                    const [year, month, q] = data.listId.split('-');
+                    const dateObj = new Date(year, parseInt(month)-1);
+                    const monthName = dateObj.toLocaleString('es-ES', { month: 'long' }).toUpperCase();
+                    opt.text = `${monthName} ${year} - QUINCENA ${q.replace('Q','')}`;
+                    if(d.id === currentListId) opt.selected = true;
+                    selector.appendChild(opt);
                 });
-                showCustomAlert(`Producto "${name}" agregado.`, 'success');
-            }
 
-            saveCatalog();
-            clearCatalogForm();
-            renderCatalog();
-        });
-
-        $catalogList.addEventListener('click', (e) => {
-            const id = e.target.dataset.id;
-            const product = productCatalog.find(p => p.id === id);
-            if (!product) return;
-
-            if (e.target.classList.contains('btn-edit-catalog')) {
-                // Rellenar formulario para editar
-                document.getElementById('catalog-product-id').value = product.id;
-                document.getElementById('catalog-product-name').value = product.name;
-                document.getElementById('catalog-product-price').value = product.unitPrice;
-                document.getElementById('catalog-product-unit').value = product.unit;
-                document.getElementById('btn-save-catalog-product').textContent = 'Actualizar Producto';
-            } else if (e.target.classList.contains('btn-delete-catalog')) {
-                // Usamos un modal de confirmación personalizado si tuviéramos más tiempo, pero por ahora usamos confirm()
-                if (confirm(`¿Eliminar el producto "${product.name}" del catálogo?`)) {
-                    productCatalog = productCatalog.filter(p => p.id !== id);
-                    saveCatalog();
-                    renderCatalog();
-                    showCustomAlert(`Producto "${product.name}" eliminado del catálogo.`, 'success');
-                }
-            }
-        });
-
-        // --- Lógica de Reportes ---
-
-        function renderTotalCost() {
-            if (!currentMonthKey || !monthlyLists[currentMonthKey]) {
-                $totalCostDisplay.textContent = '0.00 C$';
-                $costComparison.textContent = 'Seleccione o genere una lista.';
-                return;
-            }
-
-            const currentListData = monthlyLists[currentMonthKey];
-            const currentTotal = parseFloat(currentListData.totalMonthlyCost) || 0;
-            $totalCostDisplay.textContent = `${currentTotal.toFixed(2)} C$`;
-
-            // Comparación con el mes anterior
-            const allKeys = Object.keys(monthlyLists).sort();
-            const currentIndex = allKeys.indexOf(currentMonthKey);
-
-            if (currentIndex > 0) {
-                const prevMonthKey = allKeys[currentIndex - 1];
-                const prevTotal = parseFloat(monthlyLists[prevMonthKey].totalMonthlyCost) || 0;
-
-                const diff = currentTotal - prevTotal;
-                const percentDiff = prevTotal === 0 ? 0 : (diff / prevTotal) * 100;
+                selector.onchange = (e) => this.loadListDetail(e.target.value);
                 
-                let comparisonText = '';
-                if (diff > 0) {
-                    comparisonText = `▲ Subió ${diff.toFixed(2)} C$ (${percentDiff.toFixed(1)}%) respecto a ${monthlyLists[prevMonthKey].month}.`;
-                    $costComparison.className = 'text-sm mt-2 text-red-600 font-semibold';
-                } else if (diff < 0) {
-                    comparisonText = `▼ Bajó ${Math.abs(diff).toFixed(2)} C$ (${Math.abs(percentDiff).toFixed(1)}%) respecto a ${monthlyLists[prevMonthKey].month}.`;
-                    $costComparison.className = 'text-sm mt-2 text-green-600 font-semibold';
+                if (!currentListId && snap.docs.length > 0) {
+                    this.loadListDetail(snap.docs[0].id);
+                }
+            }
+
+            openCreateListModal() {
+                document.getElementById('newListModal').classList.remove('hidden');
+            }
+
+            async createNewList() {
+                const monthVal = document.getElementById('newListMonth').value;
+                const qVal = document.getElementById('newListQuincena').value;
+                
+                if (!monthVal) return this.showMessage("Faltan Datos", "Selecciona un mes");
+                
+                const listId = `${monthVal}-Q${qVal}`;
+                
+                const exists = await getDocs(query(collection(db, `artifacts/${this.getAppId()}/users/${userId}/shopping_lists`), where("listId", "==", listId)));
+                
+                if(!exists.empty) {
+                    this.showConfirm("Lista Existente", "Esta lista ya existe. ¿Quieres sobrescribirla y reiniciar los precios/checks?", () => {
+                        this._generateList(listId, monthVal, qVal);
+                    }, true);
                 } else {
-                    comparisonText = `• El costo es idéntico al de ${monthlyLists[prevMonthKey].month}.`;
-                    $costComparison.className = 'text-sm mt-2 text-gray-600';
+                    this._generateList(listId, monthVal, qVal);
                 }
-                $costComparison.textContent = comparisonText;
-            } else {
-                $costComparison.textContent = 'No hay datos de meses anteriores para comparar.';
-                $costComparison.className = 'text-sm mt-2 text-gray-600';
-            }
-        }
-
-        function renderPriceChangeReport() {
-            $priceChangeReport.innerHTML = '';
-
-            if (!currentMonthKey || !monthlyLists[currentMonthKey]) {
-                $priceChangeReport.innerHTML = '<p class="text-gray-500">Seleccione o genere una lista.</p>';
-                return;
             }
 
-            const allKeys = Object.keys(monthlyLists).sort();
-            const currentIndex = allKeys.indexOf(currentMonthKey);
-            
-            if (currentIndex === 0) {
-                $priceChangeReport.innerHTML = '<p class="text-gray-500">No hay datos de meses anteriores para comparar.</p>';
-                return;
-            }
-
-            const prevMonthKey = allKeys[currentIndex - 1];
-            // Comparar precios iniciales de la quincena 1 (precio base)
-            const currentList1 = monthlyLists[currentMonthKey].quincena1.items;
-            const prevList1 = monthlyLists[prevMonthKey].quincena1.items;
-
-            const reportItems = [];
-
-            currentList1.forEach(currentProd => {
-                const prevProd = prevList1.find(p => p.name === currentProd.name);
-
-                if (prevProd) {
-                    const currentPrice = parseFloat(currentProd.initialPrice);
-                    const prevPrice = parseFloat(prevProd.initialPrice);
-                    const diff = currentPrice - prevPrice;
-
-                    if (Math.abs(diff) > 0.01) {
-                        const icon = diff > 0 ? '▲' : '▼';
-                        const color = diff > 0 ? 'text-red-600' : 'text-green-600';
-                        const text = `${icon} ${currentProd.name}: ${Math.abs(diff).toFixed(2)} C$`;
-
-                        reportItems.push(`<p class="${color} font-medium">${text}</p>`);
-                    }
-                }
-            });
-
-            if (reportItems.length > 0) {
-                $priceChangeReport.innerHTML = reportItems.join('');
-            } else {
-                $priceChangeReport.innerHTML = '<p class="text-gray-600">No se detectaron cambios de precio en los productos comunes.</p>';
-            }
-        }
-
-        // --- Lógica de Eventos de la App ---
-
-        $monthSelector.addEventListener('change', (e) => {
-            currentMonthKey = e.target.value;
-            renderShoppingList();
-            renderTotalCost();
-            renderPriceChangeReport();
-        });
-
-        $quincenaSelector.addEventListener('change', (e) => {
-            currentQuincena = e.target.value;
-            renderShoppingList();
-        });
-        
-        // Generar la lista inicial (Nov 2025)
-        $btnInitialList.addEventListener('click', () => {
-            // Generar lista para Noviembre de 2025 (Mes: 10, Año: 2025)
-            const initialDate = new Date(2025, 10, 1);
-            generateInitialList(initialDate);
-        });
-
-        // Generar el próximo mes
-        $btnGenerateNextMonth.addEventListener('click', () => {
-            if (!currentMonthKey) {
-                showCustomAlert('Primero debe haber una lista de compra inicial.', 'warning');
-                return;
-            }
-            
-            // Requerimiento: Solo generar si Quincena 2 está cerrada
-            const currentMonthData = monthlyLists[currentMonthKey];
-            if (!currentMonthData.quincena2.isClosed) {
-                 showCustomAlert('Debe cerrar la Quincena 2 del mes actual antes de generar el próximo mes.', 'error');
-                 return;
-            }
-
-            // La lista inicial del nuevo mes se basa en la última quincena (quincena2) del mes actual
-            const baseList = currentMonthData.quincena2.items;
-
-            // La fecha del mes siguiente se calcula sumando 1 al mes actual (base 0)
-            const currentYear = parseInt(currentMonthKey.split('-')[0]);
-            const currentMonth = parseInt(currentMonthKey.split('-')[1]); // 1-12
-            const nextDate = new Date(currentYear, currentMonth, 1); // El mes siguiente (currentMonth es 1-12, js espera 0-11, pero el constructor maneja el desbordamiento)
-            
-            generateInitialList(nextDate, baseList);
-        });
-
-        $btnDeleteMonth.addEventListener('click', deleteCurrentMonthList);
-        
-        $btnCloseQuincena.addEventListener('click', closeQuincenaList);
-
-
-        // --- Lógica de Carga de CSV ---
-
-        $csvFileInput.addEventListener('change', () => {
-            if ($csvFileInput.files.length > 0) {
-                $btnUploadCsv.disabled = false;
-            } else {
-                $btnUploadCsv.disabled = true;
-            }
-        });
-
-        $btnUploadCsv.addEventListener('click', () => {
-            const file = $csvFileInput.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const text = e.target.result;
-                processCsvData(text);
-            };
-            reader.readAsText(file);
-        });
-
-        function processCsvData(csvText) {
-            const lines = csvText.trim().split('\n');
-            const newProducts = [];
-            let addedCount = 0;
-            let updatedCount = 0;
-            let skippedDuplicates = 0;
-            
-            // Usamos un Set para detectar duplicados dentro del archivo CSV
-            const csvNames = new Set();
-            let hasInternalDuplicates = false;
-
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-
-                // Asumimos formato: Nombre,Precio Base,Unidad
-                const parts = line.split(',');
-                if (parts.length < 3) continue;
-
-                const name = parts[0].trim();
-                const price = parseFloat(parts[1].trim());
-                const unit = parts[2].trim();
-
-                if (csvNames.has(name.toLowerCase())) {
-                    hasInternalDuplicates = true;
-                    skippedDuplicates++;
-                    continue; // Saltar duplicado interno
-                }
-                csvNames.add(name.toLowerCase());
-
-                if (name && !isNaN(price) && price >= 0 && unit) {
-                    const existingProduct = productCatalog.find(p => p.name.toLowerCase() === name.toLowerCase());
-
-                    if (existingProduct) {
-                        // Actualizar si existe
-                        existingProduct.unitPrice = price.toFixed(2);
-                        existingProduct.unit = unit;
-                        updatedCount++;
-                    } else {
-                        // Agregar si es nuevo
-                        newProducts.push({
-                            id: crypto.randomUUID(),
-                            name: name,
-                            unitPrice: price.toFixed(2),
-                            unit: unit,
-                            initialQuantity: 1
+            async _generateList(listId, monthVal, qVal) {
+                const listRef = doc(db, `artifacts/${this.getAppId()}/users/${userId}/shopping_lists`, listId);
+                this.showLoading(true);
+                try {
+                    const catalogSnap = await getDocs(collection(db, `artifacts/${this.getAppId()}/users/${userId}/products`));
+                    const items = [];
+                    catalogSnap.forEach(d => {
+                        const p = d.data();
+                        items.push({
+                            productId: d.id,
+                            name: p.name,
+                            price: p.price,
+                            quantity: p.quantity,
+                            checked: false
                         });
-                        addedCount++;
-                    }
+                    });
+
+                    await setDoc(listRef, {
+                        listId: listId,
+                        month: monthVal,
+                        quincena: parseInt(qVal),
+                        createdAt: new Date().toISOString(),
+                        items: items,
+                        status: 'active' // Default status
+                    });
+
+                    this.closeModal('newListModal');
+                    await this.fetchLists();
+                    this.loadListDetail(listId);
+
+                } catch(e) {
+                    console.error(e);
+                    this.showMessage("Error", "Error creando lista: " + e.message);
+                } finally {
+                    this.showLoading(false);
                 }
             }
 
-            if (hasInternalDuplicates) {
-                $csvFeedback.innerHTML = `<p class="text-red-500 font-semibold">⚠ Advertencia: Se encontraron duplicados dentro del archivo CSV (${skippedDuplicates} líneas omitidas).</p>`;
-            }
+            loadListDetail(listId) {
+                if (!listId) return;
+                currentListId = listId;
 
-            if (newProducts.length > 0) {
-                productCatalog.push(...newProducts);
-            }
-            
-            if (addedCount > 0 || updatedCount > 0) {
-                saveCatalog();
-                renderCatalog();
-                showCustomAlert(`Carga CSV completa: ${addedCount} agregados, ${updatedCount} actualizados.`, 'success');
-            } else if (!hasInternalDuplicates) {
-                showCustomAlert('No se encontraron productos nuevos o válidos para agregar.', 'warning');
-            }
-            
-            // Limpiar input y botón
-            $csvFileInput.value = '';
-            $btnUploadCsv.disabled = true;
-        }
+                if (unsubscribeList) unsubscribeList();
 
+                const docRef = doc(db, `artifacts/${this.getAppId()}/users/${userId}/shopping_lists`, listId);
 
-        // --- Inicialización de la Aplicación y Autenticación ---
+                document.getElementById('shoppingListContainer').innerHTML = '<div class="p-4 text-center">Cargando items...</div>';
+                document.getElementById('listStats').classList.remove('hidden');
 
-        async function initApp() {
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                $authStatus.textContent = 'Conectando...';
+                unsubscribeList = onSnapshot(docRef, (docSnap) => {
+                    if (!docSnap.exists()) { this.fetchLists(); return; }
+                    
+                    const data = docSnap.data();
+                    const items = data.items || [];
+                    currentListStatus = data.status || 'active';
 
-                // Autenticación
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                onAuthStateChanged(auth, (user) => {
-                    isAuthReady = true;
-                    if (user) {
-                        userId = user.uid;
-                        $authStatus.textContent = 'Sesión Activa';
-                        $userIdDisplay.textContent = `ID Usuario: ${userId}`;
-                        
-                        // Una vez autenticado, iniciar los listeners de datos
-                        setupCatalogListener();
-                        setupMonthlyListsListener();
+                    // Control de Interfaz según Estado
+                    const btnFinalize = document.getElementById('btnFinalizeList');
+                    const badgeClosed = document.getElementById('badgeClosedList');
+                    
+                    if(currentListStatus === 'closed') {
+                        btnFinalize.classList.add('hidden');
+                        badgeClosed.classList.remove('hidden');
                     } else {
-                        userId = null;
-                        $authStatus.textContent = 'Sin Sesión';
-                        $userIdDisplay.textContent = 'ID: Desconectado';
-                        // Limpiar UI si no hay usuario
-                        $shoppingListContainer.innerHTML = '<p class="text-gray-500 text-center py-4">Inicie sesión para ver sus listas.</p>';
+                        btnFinalize.classList.remove('hidden');
+                        badgeClosed.classList.add('hidden');
+                    }
+                    
+                    const sortedItems = [...items].sort((a, b) => {
+                        if (a.checked === b.checked) return a.name.localeCompare(b.name);
+                        return a.checked ? 1 : -1;
+                    });
+
+                    const container = document.getElementById('shoppingListContainer');
+                    container.innerHTML = '';
+                    
+                    let totalEst = 0;
+                    let totalBought = 0;
+
+                    sortedItems.forEach((item) => {
+                        const lineTotal = item.price * item.quantity;
+                        totalEst += lineTotal;
+                        if (item.checked) totalBought += lineTotal;
+
+                        const el = document.createElement('div');
+                        // Estilo especial si está cerrada
+                        const isClosed = currentListStatus === 'closed';
+                        const bgClass = isClosed ? 'bg-gray-50 opacity-60' : (item.checked ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200');
+                        
+                        el.className = `grid grid-cols-12 gap-2 items-center p-3 rounded-lg shadow-sm border transition-all ${bgClass}`;
+                        
+                        const safeName = this.escapeStr(item.name);
+                        // Deshabilitar checkbox si está cerrada
+                        const disabledAttr = isClosed ? 'disabled' : '';
+
+                        el.innerHTML = `
+                            <div class="col-span-1 flex justify-center checkbox-wrapper relative w-6 h-6">
+                                <input type="checkbox" class="absolute opacity-0 w-full h-full ${isClosed ? '' : 'cursor-pointer'} z-10" 
+                                    ${item.checked ? 'checked' : ''} 
+                                    ${disabledAttr}
+                                    onchange="app.toggleItemByName('${listId}', '${safeName}', this.checked)">
+                                <div class="w-6 h-6 border-2 border-gray-300 rounded flex items-center justify-center transition bg-white pointer-events-none">
+                                    <i class="fa-solid fa-check text-white text-xs ${item.checked ? 'block' : 'hidden'}"></i>
+                                </div>
+                            </div>
+                            <div class="col-span-5 sm:col-span-6 text-sm font-medium leading-tight ${item.checked ? 'line-through text-gray-400' : 'text-gray-800'}">
+                                ${item.name}
+                            </div>
+                            <div class="col-span-2 text-center text-sm text-gray-600 bg-gray-100 rounded px-1">
+                                ${item.quantity}
+                            </div>
+                            <div class="col-span-2 text-right text-sm font-mono text-gray-600">
+                                ${item.price}
+                            </div>
+                            <div class="col-span-2 sm:col-span-1 text-right text-sm font-bold ${item.checked ? 'text-green-600' : 'text-gray-800'}">
+                                ${lineTotal.toLocaleString()}
+                            </div>
+                        `;
+                        container.appendChild(el);
+                    });
+
+                    document.getElementById('statTotal').innerText = 'C$ ' + totalEst.toLocaleString();
+                    document.getElementById('statBought').innerText = 'C$ ' + totalBought.toLocaleString();
+                });
+            }
+
+            async finalizeList() {
+                if(!currentListId) return;
+                this.showConfirm("Finalizar Lista", "¿Estás seguro que deseas cerrar esta lista? No podrás marcar ni desmarcar productos después.", async () => {
+                    const docRef = doc(db, `artifacts/${this.getAppId()}/users/${userId}/shopping_lists`, currentListId);
+                    try {
+                        await setDoc(docRef, { status: 'closed' }, { merge: true });
+                        this.showMessage("Lista Finalizada", "La lista ha sido cerrada y guardada para reportes.");
+                    } catch (e) {
+                        this.showMessage("Error", "No se pudo finalizar: " + e.message);
                     }
                 });
+            }
 
-            } catch (error) {
-                console.error("Firebase Initialization Error:", error);
-                showCustomAlert(`Error de inicialización de Firebase: ${error.message}`, 'error');
-                $authStatus.textContent = 'Error de Conexión';
+            async toggleItemByName(listId, productName, isChecked) {
+                // Verificar si la lista está cerrada antes de intentar escribir
+                if (currentListStatus === 'closed') {
+                    this.showMessage("Lista Cerrada", "Esta lista ya fue finalizada. No se pueden hacer cambios.");
+                    // Revertir visualmente el checkbox (opcional, pero la UI se repinta rápido con snapshot)
+                    return;
+                }
+
+                const docRef = doc(db, `artifacts/${this.getAppId()}/users/${userId}/shopping_lists`, listId);
+                
+                const snap = await getDocs(query(collection(db, `artifacts/${this.getAppId()}/users/${userId}/shopping_lists`), where("listId", "==", listId)));
+                let foundDoc = null;
+                snap.forEach(d => foundDoc = d);
+                
+                if(foundDoc) {
+                    const data = foundDoc.data();
+                    if(data.status === 'closed') return; // Doble verificación
+
+                    const newItems = data.items.map(i => {
+                        if(i.name === productName) return { ...i, checked: isChecked };
+                        return i;
+                    });
+                    
+                    await setDoc(foundDoc.ref, { items: newItems }, { merge: true });
+                }
+            }
+
+            async deleteCurrentList() {
+                if(!currentListId) return;
+                this.showConfirm("Borrar Lista", "¿Estás seguro que quieres eliminar esta lista? No podrás recuperarla.", async () => {
+                    await deleteDoc(doc(db, `artifacts/${this.getAppId()}/users/${userId}/shopping_lists`, currentListId));
+                    currentListId = null;
+                    this.fetchLists();
+                }, true);
+            }
+
+            // --- Reports ---
+            async loadReports() {
+                if(!userId) return;
+                const container = document.getElementById('reportsContainer');
+                container.innerHTML = '<p>Calculando...</p>';
+                
+                const q = query(collection(db, `artifacts/${this.getAppId()}/users/${userId}/shopping_lists`));
+                const snap = await getDocs(q);
+                
+                const monthTotals = {};
+                
+                snap.forEach(d => {
+                    const data = d.data();
+                    const m = data.month;
+                    if(!monthTotals[m]) monthTotals[m] = { total: 0, bought: 0, lists: 0 };
+                    
+                    data.items.forEach(item => {
+                        const cost = item.price * item.quantity;
+                        monthTotals[m].total += cost;
+                        if(item.checked) monthTotals[m].bought += cost;
+                    });
+                    monthTotals[m].lists++;
+                });
+                
+                container.innerHTML = '';
+                const sortedMonths = Object.keys(monthTotals).sort();
+                
+                sortedMonths.forEach(m => {
+                    const [year, month] = m.split('-');
+                    const dateName = new Date(year, month-1).toLocaleString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase();
+                    const d = monthTotals[m];
+                    
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-6 rounded-xl shadow border-t-4 border-red-600";
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-800">${dateName}</h3>
+                                <p class="text-xs text-gray-500">${d.lists} Listas (Q1/Q2)</p>
+                            </div>
+                            <div class="bg-red-100 text-red-600 p-2 rounded-full">
+                                <i class="fa-solid fa-calendar-check"></i>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Presupuesto:</span>
+                                <span class="font-semibold">C$ ${d.total.toLocaleString()}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Ejecutado:</span>
+                                <span class="font-bold text-green-600">C$ ${d.bought.toLocaleString()}</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                                <div class="bg-green-600 h-2.5 rounded-full" style="width: ${(d.bought/d.total*100) || 0}%"></div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            // --- Utils ---
+            showLoading(show) {
+                const el = document.getElementById('loadingOverlay');
+                if(show) el.classList.remove('hidden');
+                else el.classList.add('hidden');
+            }
+            
+            closeModal(id) {
+                document.getElementById(id).classList.add('hidden');
+            }
+            
+            getAppId() {
+                return typeof __app_id !== 'undefined' ? __app_id : 'default-app';
             }
         }
 
-        initApp();
+        // Initialize App Global
+        window.app = new SupermarketApp();
+
+        // Auth Listener
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                userId = user.uid;
+                document.getElementById('authScreen').classList.add('hidden');
+                document.getElementById('appContainer').classList.remove('hidden');
+                
+                const display = user.email || "Usuario " + user.uid.substring(0,4);
+                document.getElementById('userEmailDisplay').innerText = display;
+                
+                window.app.fetchLists();
+            } else {
+                userId = null;
+                document.getElementById('authScreen').classList.remove('hidden');
+                document.getElementById('appContainer').classList.add('hidden');
+            }
+        });
 
     </script>
 </body>
